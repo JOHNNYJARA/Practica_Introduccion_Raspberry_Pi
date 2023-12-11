@@ -1,0 +1,64 @@
+import RPi.GPIO as GPIO
+from time import sleep
+
+GPIO.setwarnings(False)
+
+led1 = 17
+led2 = 27
+bt1 = 14
+bt2 = 15
+
+# Nuevo: Agregar pin PWM para el LED que ajustaremos el brillo
+led2_pwm_pin = 18
+
+# Nuevo: Inicializar el objeto PWM
+pwm_led2 = GPIO.PWM(led2_pwm_pin, 100)  # 100 Hz (frecuencia de PWM)
+pwm_led2.start(50)  # Inicializar al 50% de brillo
+
+current_brightness = 50  # Inicializar el brillo actual
+
+def my_callback1(channel):
+    global current_brightness
+    if current_brightness < 100:
+        current_brightness += 4
+    pwm_led2.ChangeDutyCycle(current_brightness)
+    print(f"Brillo actual: {current_brightness}%")
+
+def my_callback2(channel):
+    global current_brightness
+    if current_brightness > 0:
+        current_brightness -= 4
+    pwm_led2.ChangeDutyCycle(current_brightness)
+    print(f"Brillo actual: {current_brightness}%")
+
+def peripheral_setup():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(led1, GPIO.OUT)
+    GPIO.setup(led2, GPIO.OUT)
+    GPIO.setup(bt1, GPIO.IN, GPIO.PUD_DOWN)
+    GPIO.setup(bt2, GPIO.IN, GPIO.PUD_UP)
+    GPIO.setup(led2_pwm_pin, GPIO.OUT)
+
+    GPIO.add_event_detect(bt1, GPIO.FALLING, callback=my_callback1, bouncetime=300)
+    GPIO.add_event_detect(bt2, GPIO.RISING, callback=my_callback2, bouncetime=300)
+
+def peripheral_loop():
+    GPIO.output(led1, not GPIO.input(led1))
+    sleep(0.75)
+
+def main():
+    # Setup
+    peripheral_setup()
+    try:
+        # Infinite loop
+        while True:
+            peripheral_loop()
+    except KeyboardInterrupt:
+        print()
+        print("Bye")
+    finally:
+        pwm_led2.stop()
+        GPIO.cleanup()
+
+if __name__ == "__main__":
+    main()
